@@ -1,8 +1,8 @@
+input <- read.csv("RefracIncrementalInput.csv",header = TRUE)
 input_header <- read.csv("Refrac Header Test 2.csv",header = TRUE)
 input_production <- read.csv("Refrac Production Test 2.csv", header = TRUE)
 
-forecast <- function(input_header, input_production) {
-  
+forecast <- function(input) {
   #Import Package arpsDCA package
   source("arpsDCA/R/bestfit.R")
   source("arpsDCA/R/arps.R")
@@ -10,6 +10,10 @@ forecast <- function(input_header, input_production) {
   source("arpsDCA/R/eur.R")
   source("arpsDCA/R/s3.R")
   
+  #Calculation of Refrac Time
+  
+  input$firstProductionDate = as.Date(input$firstProductionDate,"%m/%d/%Y")
+  input$completionDate = as.Date(input$completionDate,"%m/%d/%Y")
   
   
   #Filter out Refrac data
@@ -17,7 +21,7 @@ forecast <- function(input_header, input_production) {
   ##FOR EACH COULD BE USED HERE?
   
   #API <- unique(input_production$api10)
-  for(i in 1:length(refracAPI)) {
+  for(i in 1:length(refracAPI)) {   
     well = subset(input_production, input_production$api10 == refracAPI & is.na(input_production$refracTime) != TRUE)
     
     #Sort if necessary
