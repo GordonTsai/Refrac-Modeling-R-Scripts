@@ -1,3 +1,114 @@
+##########  Data Pull  ################### 
+{
+  myConn <- odbcDriverConnect('driver={SQL Server};server=gis-mssql.prod.aus,60342;trusted_connection=true')
+  data <- sqlQuery(myConn,"
+                   with permitRank as (
+                   select DISTINCT api
+                   , bottomLatitude
+                   , bottomLongitude
+                   , lateralLength
+                   , row_number()  over (partition by api order by lateralLength desc) as ranked
+                   from esp_stage.dbo.espPermit p
+                   where lateralLength is not null 
+                   ),
+                   
+                   x as 
+                   (
+                   SELECT distinct h.api
+                   , h.hpdiEntityId
+                   , h.play
+                   , h.operator
+                   , h.reservoirAlias 
+                   , h.firstProductionDate
+                   , h.azimuth[az]
+                   , h.latitude27
+                   , h.longitude27
+                   , (h.latitude27 + p.bottomlatitude) / 2[midlat]
+                   , (h.longitude27 + p.bottomlongitude) / 2[midlong]
+                   , p.bottomlatitude[botlat]
+                   , p.bottomlongitude[botlong]
+                   , wellbore
+                   --, row_number()  over (partition by h.api order by firstProductionDate,reservoirAlias) as ranked2
+                   
+                   from esp_stage.dbo.espHeader h
+                   left join permitRank p on h.api = p.api and p.ranked = 1
+                   where h.api <>'0' 
+                   and firstProductionDate is not null
+                   and h.longitude27 is not null
+                   and h.latitude27 is not null
+                   and (p.bottomLatitude is not null or h.wellbore = 'Vertical')
+                   and (p.bottomLongitude is not null or h.wellbore = 'Vertical')
+                   
+                   ),
+                   
+                   y as 
+                   (
+                   SELECT distinct api
+                   , hpdiEntityId
+                   , play
+                   , [az]
+                   , latitude27
+                   , longitude27
+                   , [midlat]
+                   , [midlong]
+                   , [botlat]
+                   , [botlong]
+                   , wellbore
+                   ,reservoirAlias
+                   ,firstProductionDate
+                   ,case
+                   when x.latitude27 = x.botlat and x.longitude27 = x.botlong then x.latitude27 --mistake input
+                   when x.wellbore = 'VERTICAL' and x.botlat IS NOT NULL then x.botlat 
+                   when x.wellbore = 'VERTICAL' and x.botlat IS NULL then x.latitude27
+                   when x.wellbore = 'DIRECTIONAL' and x.botlat IS NOT NULL then x.botlat
+                   when x.wellbore = 'HORIZONTAL' and x.midlat IS NOT NULL then x.midlat
+                   when x.wellbore IS NULL and x.midlat IS NOT NULL then x.midlat
+                   else x.latitude27
+                   end [Y] 
+                   ,case
+                   when x.latitude27 = x.botlat and x.longitude27 = x.botlong then x.longitude27
+                   when x.wellbore = 'VERTICAL' and x.botlong IS NOT NULL then x.botlong
+                   when x.wellbore = 'VERTICAL' and x.botlong IS NULL then x.longitude27
+                   when x.wellbore = 'DIRECTIONAL' and x.botlong IS NOT NULL then x.botlong
+                   when x.wellbore = 'HORIZONTAL' and x.midlong IS NOT NULL then x.midlong
+                   when x.wellbore IS NULL and x.midlong IS NOT NULL then x.midlong
+                   else x.longitude27
+                   end [X]              
+                   from x
+                   where x.longitude27 < 0 and x.latitude27 > 0 
+                   --AND ranked2=1 --Unique api so well is not neighbor to itself. More than 99% of apis have same  or 4th digit same coordinates
+                   AND play<>'Permian Basin' --Permian Basin is currently too complex geologically to accuratly determine nn
+                   )
+                   
+                   SELECT distinct api
+                   , hpdiEntityId
+                   , play
+                   , reservoirAlias
+                   , firstProductionDate
+                   , az
+                   , X
+                   , Y
+                   , wellbore
+                   , latitude27
+                   , longitude27
+                   , botlat
+                   , botlong
+                   FROM y
+                   WHERE play = 'Bakken' AND api LIKE '33053%'--play subset
+                   ")
+  close(myConn)
+}
+
+
+
+
+
+
+
+
+
+
+
 input <- read.csv("RefracIncrementalInput.csv",header = TRUE)
 input_header <- read.csv("Refrac Header Test 2.csv",header = TRUE)
 input_production <- read.csv("Refrac Production Test 2.csv", header = TRUE)
@@ -78,3 +189,27 @@ hyp2exp.Np <- function (qi, Di, b, Df, t)
 }
 
 output = forecast(input_header,input_production)
+
+
+
+
+#data dump back into SQL ## timeSeries
+# myConn <- odbcDriverConnect('driver={SQL Server};server=gis-mssql.prod.aus,60342;trusted_connection=true')
+# sqlQuery(myConn, "use esp_data
+# drop table espNearNeighborTimef
+# CREATE TABLE espNearNeighborTime(
+#       [hpdiEntityId] [int] NULL,
+#       [nearNeighborFt] [decimal](38,0) NULL,
+#       [prodMon] [date] NULL,
+# ) ON [PRIMARY]
+# 
+# BULK INSERT espNearNeighborTime FROM '//di-mssql02.prod.aus/analytics$/nnTime.txt' WITH (FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+#              
+# update esp_stage.dbo.espProduction
+# set esp_stage.dbo.espProduction.nearNeighborFt = s.nearNeighborFt 
+# from esp_stage.dbo.espProduction p
+#        left join esp_data.dbo.espNearNeighborTime s on p.hpdiEntityId = s.hpdiEntityId and p.productionDate = s.prodMon
+#              ")
+# 
+# 
+# close(myConn)
