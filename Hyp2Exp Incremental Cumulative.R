@@ -1,5 +1,6 @@
 ##########  Data Pull  ###################
 library(RODBC)
+
 {
   myConn <- odbcDriverConnect('driver={SQL Server};server=AUS2-CIS-DDB02V;trusted_connection=true')
    #input < sqlFetch(myConn, [esp_stage].[dbo].[RefracIncrementalInput]
@@ -103,10 +104,10 @@ library(RODBC)
 #                   ")
 
 
-
-input <- read.csv("RefracIncrementalInput.csv",header = TRUE, stringsAsFactors =FALSE)
-input_header <- read.csv("Refrac Header Test 2.csv",header = TRUE)
-input_production <- read.csv("Refrac Production Test 2.csv", header = TRUE)
+input = data
+#input <- read.csv("RefracIncrementalInput.csv",header = TRUE, stringsAsFactors =FALSE)
+#input_header <- read.csv("Refrac Header Test 2.csv",header = TRUE)
+#input_production <- read.csv("Refrac Production Test 2.csv", header = TRUE)
 
 forecast <- function(input) {
   #Import Package arpsDCA package
@@ -117,30 +118,36 @@ forecast <- function(input) {
   source("arpsDCA/R/s3.R")
   
   #Calculation of Refrac Time
+  #input$firstProductionDate = format(as.Date(input$firstProductionDate,"%d/%m/%Y"),"%d/%m/%Y")
+  #input$completionDate = format(as.Date(input$completionDate,"%d/%m/%Y"),"%d/%m/%Y")
+  ##Create rankDate column, same method as join production header
+  #input$rankDate <- ave(as.numeric(input$productionDate), input$api, FUN=rank)
+  ##Create refracTime
+  #prodDate = strptime(input$firstProductionDate, format = "%d/%m/%Y")
+  #completeDate = strptime(input$completionDate, format = "%d/%m/%Y")
+  #diff_in_days = difftime(completeDate, prodDate, units = "days")
+  #diff_in_weeks = difftime(completeDate, prodDate, units = "weeks")
+  #diff_in_years = as.double(diff_in_days)/365
+  #months_diff = as.double(substring(completeDate, 6, 7)) - as.double(substring(prodDate, 6, 7))
+  #input$refracTime = floor(diff_in_years)*12 + months_diff
   
-  input$firstProductionDate = format(as.Date(input$firstProductionDate,"%d/%m/%Y"),"%d/%m/%Y")
-  input$completionDate = as.Date(input$completionDate,"%d/%m/%Y")
-  #Create rankDate column, same method as join production header
-  input$rankDate <- ave(as.numeric(input$productionDate), input$api, FUN=rank)
-  #Create refracTime
-  prodDate = strptime(input$firstProductionDate, format = "%d/%m/%Y")
-  completeDate = strptime(input$completionDate, format = "%d/%m/%Y")
-  diff_in_days = difftime(completeDate, prodDate, units = "days")
-  
+  #Reorder
+  input = input[order(input$api),]
+  input_reduced = subset(input, input$Time2Refrac > 4)
   
   #Filter out Refrac data
-  refracAPI = unique(input_header$api10[which(is.na(input_header$refracTime) != TRUE)])
+  refracAPI = unique(input_reduced$api)
   ##FOR EACH COULD BE USED HERE?
   
   #API <- unique(input_production$api10)
   for(i in 1:length(refracAPI)) {   
-    well = subset(input_production, input_production$api10 == refracAPI & is.na(input_production$refracTime) != TRUE)
+    well = subset(input_reduced, input_reduced$api == refracAPI)
     
     #Sort if necessary
     #input_header <- input_header[order(input_header$api10),]
     #well <- well[order(input_production$api10),]
     
-    well <- subset(well, well$api10 == unique(well$api10)[i])
+    well <- subset(well, well$api == unique(well$api10)[i])
     currentTime = max(well$rankDate)/12
     currentTimeSeries = well$rankDate/12
     well <- well[order(well$rankDate),]
