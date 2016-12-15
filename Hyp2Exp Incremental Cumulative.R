@@ -1,12 +1,16 @@
 ##########  Data Pull  ###################
 library(RODBC)
+#{
+#  myConn <- odbcDriverConnect('driver={SQL Server};server=AUS2-CIS-DDB02V;trusted_connection=true')
+#  #input < sqlFetch(myConn, [esp_stage].[dbo].[RefracIncrementalInput]
+#  data <- sqlQuery(myConn,"Select * from [esp_stage].[dbo].[RefracIncrementalInput]")
+#  close(myConn)
+#}
 
-{
-  myConn <- odbcDriverConnect('driver={SQL Server};server=AUS2-CIS-DDB02V;trusted_connection=true')
-   #input < sqlFetch(myConn, [esp_stage].[dbo].[RefracIncrementalInput]
-  data <- sqlQuery(myConn,"Select * from [esp_stage].[dbo].[RefracIncrementalInput]")
-  close(myConn)
-}
+
+
+
+
 
 #                   with permitRank as (
 #                   select DISTINCT api
@@ -104,7 +108,7 @@ library(RODBC)
 #                   ")
 
 
-input = data
+  input = data
 #input <- read.csv("RefracIncrementalInput.csv",header = TRUE, stringsAsFactors =FALSE)
 #input_header <- read.csv("Refrac Header Test 2.csv",header = TRUE)
 #input_production <- read.csv("Refrac Production Test 2.csv", header = TRUE)
@@ -117,11 +121,12 @@ forecast <- function(input) {
   source("arpsDCA/R/eur.R")
   source("arpsDCA/R/s3.R")
   
-  #Calculation of Refrac Time
+  ##Calculation of Refrac Time
   #input$firstProductionDate = format(as.Date(input$firstProductionDate,"%d/%m/%Y"),"%d/%m/%Y")
   #input$completionDate = format(as.Date(input$completionDate,"%d/%m/%Y"),"%d/%m/%Y")
-  ##Create rankDate column, same method as join production header
-  #input$rankDate <- ave(as.numeric(input$productionDate), input$api, FUN=rank)
+  #input$productionDate = format(as.Date(input$productionDate,"%d/%m/%Y"),"%d/%m/%Y")
+  
+  
   ##Create refracTime
   #prodDate = strptime(input$firstProductionDate, format = "%d/%m/%Y")
   #completeDate = strptime(input$completionDate, format = "%d/%m/%Y")
@@ -131,54 +136,111 @@ forecast <- function(input) {
   #months_diff = as.double(substring(completeDate, 6, 7)) - as.double(substring(prodDate, 6, 7))
   #input$refracTime = floor(diff_in_years)*12 + months_diff
   
+  
+  ## turn a date into a 'monthnumber' relative to an origin
+  #monnb <- function(d) { lt <- as.POSIXlt(as.Date(d, origin="1900-01-01")); lt$year*12 + lt$mon } 
+  ## compute a month difference as a difference between two monnb's
+  #mondf <- function(d1, d2) { monnb(d2) - monnb(d1) }
+  ## take it for a spin
+  #mondf(currentProd
+  #      , Sys.Date())
+  
+  
+  
+  
+  
+  
+  
+  
+  ##Create rankDate column, same method as join production header
+  #firstprodDate = strptime(input$firstProductionDate, format = "%d/%m/%Y")
+  #prodDate = strptime(input$productionDate, format = "%d/%m/%Y")
+  #diff_in_days = difftime(prodDate, firstprodDate, units = "days")
+  #diff_in_weeks = difftime(prodDate, firstprodDate, units = "weeks")
+  #diff_in_years = as.double(diff_in_days)/365
+  #months_diff = as.double(substring(prodDate, 6, 7)) - as.double(substring(firstprodDate, 6, 7))
+  
+  #input$rankDate <- months_diff
+  
+  
+  
+  
+  
+  
+  
   #Reorder
   input = input[order(input$api),]
   input_reduced = subset(input, input$Time2Refrac > 4)
   
   #Filter out Refrac data
   refracAPI = unique(input_reduced$api)
+  ForecastCumOil = numeric(length(refracAPI))
+  ForecastCumGas = numeric(length(refracAPI))
+  output = data.frame(api = refracAPI,ForecastCumOil, ForecastCumGas)
+  
   ##FOR EACH COULD BE USED HERE?
   
   #API <- unique(input_production$api10)
   for(i in 1:length(refracAPI)) {   
-    well = subset(input_reduced, input_reduced$api == refracAPI)
+    well = subset(input_reduced, input_reduced$api == refracAPI[7])
+    well$ProductionMonth <- well$ProductionMonth +1
     
     #Sort if necessary
     #input_header <- input_header[order(input_header$api10),]
     #well <- well[order(input_production$api10),]
     
-    well <- subset(well, well$api == unique(well$api10)[i])
-    currentTime = max(well$rankDate)/12
-    currentTimeSeries = well$rankDate/12
-    well <- well[order(well$rankDate),]
-    well = subset(well, well$rankDate <= well$refracTime[1]) 
+    #well <- subset(well, well$api == unique(well$api)[i])
+    currentTime = max(well$ProductionMonth)/12
+    currentTimeSeries = well$ProductionMonth/12
+    well <- well[order(well$ProductionMonth),]
+    well = subset(well, well$ProductionMonth <= well$Time2Refrac[1]) 
     well$oilProduction = well$oilProduction/30.4
     well$gasProduction = well$gasProduction/30.4
-    well$rankDate <- as.double(well$rankDate)/12
+    well$ProductionMonth <- as.double(well$ProductionMonth)/12
     
     
     #Find best fit line
     #if(length(well$oilProduction) > 2 && length(well$oilProduction == length(well$rankDate))) {
-    hyp2exp.fit.Oil = best.hyp2exp(well$oilProduction, well$rankDate)
-    hyp2exp.fit.Gas = best.hyp2exp(well$gasProduction, well$rankDate)
+    if(well$oilProduction[1] != 0&well$oilProduction[2] != 0&well$oilProduction[3] != 0&well$oilProduction[4] != 0){
+      
+      hyp2exp.fit.Oil = best.hyp2exp(well$oilProduction, well$ProductionMonth)
+      CumProduction.Oil = arps.Np.hyp2exp(hyp2exp.fit.Oil$decline, currentTime)
+      output$ForecastCumOil[output$api == refracAPI[i]] = CumProduction.Oil
+      
+    } else {
+      
+      output$ForecastCumOil[output$api == refracAPI[i]] = NA
+      
+    }
+      
+    if (well$gasProduction[1] != 0&well$gasProduction[2] != 0&well$gasProduction[3] != 0&well$gasProduction[4] != 0) {
+      hyp2exp.fit.Gas = best.hyp2exp(well$gasProduction, well$ProductionMonth)
+      CumProduction.Gas = arps.Np.hyp2exp(hyp2exp.fit.Gas$decline, currentTime)
+      output$ForecastCumOil[output$api == refracAPI[i]] = CumProduction.Gas
+      
+    } else {
+        
+      output$ForecastCumOil[output$api == refracAPI[i]] = NA
     
+    }
+      
     ##Plot fit
     #plot(well$rankDate, well$oilProduction, main="Hyperbolic Fit",col="blue", xlab="Time", ylab="Rate") 
     #lines( well$rankDate,arps.q.hyp2exp(hyp2exp.fit$decline, well$rankDate), col="red")
     #print(arps.Np.hyp2exp(hyp2exp.fit$decline, currentTime))
     
-    #Output
-    #rateTimeForecast = arps.q.hyp2exp(hyp2exp.fit$decline, currentTimeSeries)
-    CumProduction.Oil = arps.Np.hyp2exp(hyp2exp.fit.Oil$decline, currentTime)
-    CumProduction.Gas = arps.Np.hyp2exp(hyp2exp.fit.Gas$decline, currentTime)
+    ##Output
+    ##rateTimeForecast = arps.q.hyp2exp(hyp2exp.fit$decline, currentTimeSeries)
+    #CumProduction.Oil = arps.Np.hyp2exp(hyp2exp.fit.Oil$decline, currentTime)
+    #CumProduction.Gas = arps.Np.hyp2exp(hyp2exp.fit.Gas$decline, currentTime)
     
-    #Merge CumProduction with correct well API
-    input_header$ForecastCumOil[input_header$api10 == refracAPI[i]] <- CumProduction.Oil
-    input_header$ForecastCumGas[input_header$api10 == refracAPI[i]] <- CumProduction.Gas
+    ##Merge CumProduction with correct well API
+    #input_header$ForecastCumOil[input_header$api10 == refracAPI[i]] <- CumProduction.Oil
+    #input_header$ForecastCumGas[input_header$api10 == refracAPI[i]] <- CumProduction.Gas
     
   }
   
-  return(input_header)
+  return(output)
 }
 
 arps.Np.hyp2exp <- function(decl, t) hyp2exp.Np(decl$qi, decl$Di, decl$b, decl$Df, t)
@@ -196,7 +258,7 @@ hyp2exp.Np <- function (qi, Di, b, Df, t)
   Np
 }
 
-output = forecast(input_header,input_production)
+output = forecast(input)
 
 
 
