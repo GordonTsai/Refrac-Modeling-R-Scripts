@@ -224,7 +224,7 @@ forecast <- function(input) {
     if((length(unique(well$oilProduction)) == 1 & min(unique(well$oilProduction)) == 0) || max(well$ProductionMonth*12)<4 || length(well$ProductionMonth)<=2)
       {
         
-        output$ForecastCumOil[output$api == refracAPI[i]] = NA
+        output$ForecastCumOil[output$api == refracAPI[i]] = 0
         
       } else if(well$oilProduction[1] == 0){
       
@@ -246,7 +246,7 @@ forecast <- function(input) {
     if((length(unique(well$gasProduction)) == 1 & min(unique(well$gasProduction)) == 0) || max(well$ProductionMonth*12)<4 ||length(well$ProductionMonth)<=2)
     {
       
-      output$ForecastCumGas[output$api == refracAPI[i]] = NA
+      output$ForecastCumGas[output$api == refracAPI[i]] = 0
       
     } else if(well$gasProduction[1] == 0){
       
@@ -304,17 +304,20 @@ hyp2exp.Np <- function (qi, Di, b, Df, t)
 
 output = forecast(input)
 
+write.table(output, "C:/Users/gordon.tsai/Documents/Refracs/output")
 
-
+#write.csv(output, "C:/Users/gordon.tsai/Documents/Refracs/output.csv") 
 
 #data dump back into SQL ## timeSeries
-# myConn <- odbcDriverConnect('driver={SQL Server};server=gis-mssql.prod.aus,60342;trusted_connection=true')
-# sqlQuery(myConn, "use esp_data
-# drop table espNearNeighborTimef
-# CREATE TABLE espNearNeighborTime(
-#       [hpdiEntityId] [int] NULL,
-#       [nearNeighborFt] [decimal](38,0) NULL,
-#       [prodMon] [date] NULL,
+#myConn <- odbcDriverConnect('driver={SQL Server};server=gis-mssql.prod.aus,60342;trusted_connection=true')
+#{
+#myConn <- odbcDriverConnect('driver={SQL Server};server=AUS2-CIS-DDB02V;trusted_connection=true')
+# sqlQuery(myConn, "use Analytics_Dev
+## drop table RefracProductionCumulatives
+# CREATE TABLE RefracPredictedCumulatives(
+#       [api] [int] NULL,
+#       [ForecastCumOil] [decimal](38,0) NULL,
+#       [ForecastCumGas] [decimal](38,0) NULL,
 # ) ON [PRIMARY]
 # 
 # BULK INSERT espNearNeighborTime FROM '//di-mssql02.prod.aus/analytics$/nnTime.txt' WITH (FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
@@ -324,6 +327,7 @@ output = forecast(input)
 # from esp_stage.dbo.espProduction p
 #        left join esp_data.dbo.espNearNeighborTime s on p.hpdiEntityId = s.hpdiEntityId and p.productionDate = s.prodMon
 #              ")
-# 
-# 
+ 
+ 
 # close(myConn)
+#}
