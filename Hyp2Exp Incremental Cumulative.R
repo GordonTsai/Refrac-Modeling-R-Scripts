@@ -107,11 +107,7 @@ forecast <- function(input) {
     ##rateTimeForecast = arps.q.hyp2exp(hyp2exp.fit$decline, currentTimeSeries)
     #CumProduction.Oil = arps.Np.hyp2exp(hyp2exp.fit.Oil$decline, currentTime)
     #CumProduction.Gas = arps.Np.hyp2exp(hyp2exp.fit.Gas$decline, currentTime)
-    
-    ##Merge CumProduction with correct well API
-    #input_header$ForecastCumOil[input_header$api10 == refracAPI[i]] <- CumProduction.Oil
-    #input_header$ForecastCumGas[input_header$api10 == refracAPI[i]] <- CumProduction.Gas
-    
+  
   }
   return(output)
 }
