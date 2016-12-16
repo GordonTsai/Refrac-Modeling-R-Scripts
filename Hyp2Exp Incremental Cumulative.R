@@ -38,7 +38,7 @@ forecast <- function(input) {
   for(i in 1:length(refracAPI)) {   
     count = count+1
     print(count)
-    well = subset(input_reduced, input_reduced$api == refracAPI[i])
+    well = subset(input_reduced, input_reduced$api == 3302501239)
     well$ProductionMonth <- well$ProductionMonth + 1
   
     currentTime = max(well$ProductionMonth)
@@ -65,7 +65,7 @@ forecast <- function(input) {
     #q[1] causes the DCA package to error out because the Di calculation can't divide by 0
     if((length(unique(well$oilProduction)) == 1 & min(unique(well$oilProduction)) == 0)){
       output$ForecastCumOil[output$api == refracAPI[i]] = 1111111111
-    } else if(max(well$ProductionMonth)<4 || length(well$ProductionMonth)<=2)
+    } else if(length(well$ProductionMonth)<=2)
       {
         output$ForecastCumOil[output$api == refracAPI[i]] = 2222222222
       } else if(well$oilProduction[1] == 0){
@@ -85,10 +85,8 @@ forecast <- function(input) {
     
     if((length(unique(well$gasProduction)) == 1 & min(unique(well$gasProduction)) == 0)){
       output$ForecastCumGas[output$api == refracAPI[i]] = 1111111111
-    } else if(max(well$ProductionMonth)<4 ||length(well$ProductionMonth)<=2)
-       
-    {
-      output$ForecastCumGas[output$api == refracAPI[i]] = 1111111111
+    } else if(length(well$ProductionMonth)<=2){
+      output$ForecastCumGas[output$api == refracAPI[i]] = 2222222222
     } else if(well$gasProduction[1] == 0){
       well$gasProduction[1] = 1  
       hyp2exp.fit.Gas = best.hyp2exp(well$gasProduction, well$ProductionMonth)
