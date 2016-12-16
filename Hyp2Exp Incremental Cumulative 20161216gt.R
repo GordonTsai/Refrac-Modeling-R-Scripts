@@ -219,8 +219,6 @@ forecast <- function(input) {
     
     
     #Find best fit line
-    #Should make changes eventually to iterate through and find the first month of production if q[1] happens to be zero
-    #q[1] causes the DCA package to error out because the Di calculation can't divide by 0
     if((length(unique(well$oilProduction)) == 1 & min(unique(well$oilProduction)) == 0) || max(well$ProductionMonth*12)<4 || length(well$ProductionMonth)<=2)
       {
         
@@ -300,7 +298,7 @@ hyp2exp.Np <- function (qi, Di, b, Df, t)
     exponential.Np(q.trans, Df, t[t > t.trans] - t.trans)
   
   Np
-};
+}
 
 output = forecast(input)
 
