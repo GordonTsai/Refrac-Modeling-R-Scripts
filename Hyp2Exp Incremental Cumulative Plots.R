@@ -15,7 +15,7 @@ forecast <- function(input) {
   source("arpsDCA/R/bestfit.R")
   source("arpsDCA/R/arps.R")
   source("arpsDCA/R/curtail.R")
-  source("arpsDCA/R/eur.R")
+  source("arpsDCA/R/eur.R")fa
   source("arpsDCA/R/s3.R")
   
   #Reorder
