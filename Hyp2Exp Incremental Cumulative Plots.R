@@ -22,7 +22,8 @@ forecast <- function(input) {
   input = input[order(input$api),]
   input_reduced = subset(input, input$Time2Refrac > 4)
   
-  api = 4903728829
+  api = 3001534126
+
 
   #Filter out Refrac data
   refracAPI = unique(input_reduced$api)
@@ -90,9 +91,7 @@ forecast <- function(input) {
       output$ForecastCumOil[output$api == refracAPI[i]] = CumProduction.Oil
     } 
     
-  #  if(well$Time2Refrac[1]+6 <= currentTime) {
-      
-   # }
+ 
     
     if((length(unique(well$gasProduction)) == 1 & min(unique(well$gasProduction)) == 0)){
       output$ForecastCumGas[output$api == refracAPI[i]] = 1111111111
