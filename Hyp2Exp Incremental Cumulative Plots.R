@@ -2,7 +2,7 @@
 library(RODBC)
 #{
 #  myConn <- odbcDriverConnect('driver={SQL Server};server=AUS2-CIS-DDB02V;trusted_connection=true')
-  #input < sqlFetch(myConn, [esp_stage].[dbo].[RefracIncrementalInput]
+#  #input < sqlFetch(myConn, [esp_stage].[dbo].[RefracIncrementalInput]
 #  data <- sqlQuery(myConn,"Select * from [esp_stage].[dbo].[RefracIncrementalInput]")
 #  close(myConn)
 #}
@@ -15,18 +15,14 @@ forecast <- function(input) {
   source("arpsDCA/R/bestfit.R")
   source("arpsDCA/R/arps.R")
   source("arpsDCA/R/curtail.R")
-  source("arpsDCA/R/eur.R")fa
+  source("arpsDCA/R/eur.R")
   source("arpsDCA/R/s3.R")
   
   #Reorder
   input = input[order(input$api),]
   input_reduced = subset(input, input$Time2Refrac > 4)
   
-  api = 4248332403
-
-
-
-
+  api = 4903728829
 
   #Filter out Refrac data
   refracAPI = unique(input_reduced$api)
